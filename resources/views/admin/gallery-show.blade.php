@@ -2,6 +2,54 @@
 
 @section('title', 'Session Details - ' . $session->customer_name)
 
+@section('styles')
+    <style>
+        .qr-wrapper {
+            background: #fff;
+            padding: 12px;
+            border-radius: 16px;
+            border: 1px solid #eee;
+            width: fit-content;
+        }
+
+        .qr-wrapper img {
+            max-width: 170px;
+        }
+
+        /* PIN BOX */
+        .pin-box {
+            width: 48px;
+            height: 58px;
+            border-radius: 12px;
+            border: 1px solid #e5e7eb;
+            background: #f9fafb;
+            text-align: center;
+            font-size: 20px;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+
+        .pin-box:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        /* TOGGLE */
+        .toggle-pin {
+            cursor: pointer;
+            color: #6c757d;
+            font-size: 13px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .toggle-pin:hover {
+            color: #0d6efd;
+        }
+    </style>
+@endsection
+
 @section('content')
     <div class="container pb-5">
         <nav aria-label="breadcrumb" class="mb-4">
@@ -73,17 +121,50 @@
                     </div>
                 </div>
 
-                @if ($session->qr_code_url)
-                    <div class="card shadow-sm border-0 text-center p-4">
-                        <label class="text-muted d-block small mb-3 text-uppercase fw-bold">Session QR Code</label>
-                        <div class="bg-white p-2 border rounded d-inline-block mx-auto">
-                            <img src="{{ $session->qr_code_url }}" class="img-fluid" style="max-width: 180px;"
-                                 alt="QR Code">
-                        </div>
-                        <p class="small text-muted mt-3 mb-0">Clients can scan this to access their private gallery online.
-                        </p>
+                <div class="card border-0 shadow-sm text-center p-4 rounded-4">
+
+                    <!-- TITLE -->
+                    <label class="text-muted small text-uppercase fw-semibold mb-3">
+                        Session QR Code
+                    </label>
+
+                    <!-- QR -->
+                    <div class="qr-wrapper mx-auto mb-3">
+                        <img src="{{ $qrCodeData }}" class="img-fluid" alt="QR Code">
                     </div>
-                @endif
+
+                    <!-- DESCRIPTION -->
+                    <p class="small text-muted mb-2">
+                        Scan or share this QR to access the photos
+                    </p>
+
+                    <!-- LINK -->
+                    <div class="text-center mb-3">
+                        <a href="{{ route('public.gallery.show', $session->session_id) }}" target="_blank"
+                           class="btn btn-outline-primary btn-sm rounded-pill px-3">
+                            <i class="bi bi-link-45deg me-1"></i> Open Public Link
+                        </a>
+                    </div>
+
+                    <!-- PIN -->
+                    <div class="pin-section mt-2">
+                        <label class="text-muted small fw-semibold mb-2 d-block">
+                            <i class="bi bi-shield-lock me-1"></i> Access PIN
+                        </label>
+
+                        <div class="d-flex justify-content-center gap-2 mb-2">
+                            @foreach (str_split($session->access_password) as $digit)
+                                <input type="password" class="pin-box" value="{{ $digit }}" readonly>
+                            @endforeach
+                        </div>
+
+                        <div class="toggle-pin" onclick="togglePin()">
+                            <i class="bi bi-eye" id="toggleIcon"></i>
+                            <span class="small ms-1">Show PIN</span>
+                        </div>
+                    </div>
+
+                </div>
             </div>
 
             <div class="col-lg-8">
@@ -130,6 +211,18 @@
 
 @section('scripts')
     <script>
+        function togglePin() {
+            const inputs = document.querySelectorAll('.pin-box');
+            const icon = document.getElementById('toggleIcon');
+
+            inputs.forEach(input => {
+                input.type = input.type === 'password' ? 'text' : 'password';
+            });
+
+            icon.classList.toggle('bi-eye');
+            icon.classList.toggle('bi-eye-slash');
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
             const imageModal = document.getElementById('imageModal');
             const modalImage = document.getElementById('modalImage');
@@ -152,36 +245,36 @@
         const btn = document.getElementById('loadMoreBtn');
 
         if (btn) {
-            btn.addEventListener('click', function () {
+            btn.addEventListener('click', function() {
                 page++;
 
                 btn.innerText = 'Loading...';
                 btn.disabled = true;
 
                 fetch(`?page=${page}`, {
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
-                })
-                .then(res => res.json())
-                .then(data => {
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    })
+                    .then(res => res.json())
+                    .then(data => {
 
-                    document
-                        .getElementById('photo-container')
-                        .insertAdjacentHTML('beforeend', data.html);
+                        document
+                            .getElementById('photo-container')
+                            .insertAdjacentHTML('beforeend', data.html);
 
-                    if (!data.hasMore) {
-                        btn.style.display = 'none';
-                    }
+                        if (!data.hasMore) {
+                            btn.style.display = 'none';
+                        }
 
-                    btn.innerText = 'Load More';
-                    btn.disabled = false;
-                })
-                .catch(() => {
-                    btn.innerText = 'Load More';
-                    btn.disabled = false;
-                });
+                        btn.innerText = 'Load More';
+                        btn.disabled = false;
+                    })
+                    .catch(() => {
+                        btn.innerText = 'Load More';
+                        btn.disabled = false;
+                    });
             });
         }
-        </script>
+    </script>
 @endsection

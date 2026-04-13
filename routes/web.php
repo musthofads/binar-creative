@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\PublicGalleryController;
 use App\Http\Controllers\WebController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -24,11 +25,19 @@ Route::post('/logout', function (Request $request) {
     return response()->json(['success' => true]);
 })->name('logout');
 
+// Route untuk menampilkan galeri (sudah termasuk logika pengecekan di controller)
+Route::get('/gallery/session/{session_id}', [PublicGalleryController::class, 'show'])->name('public.gallery.show');
+
+// Route untuk memproses verifikasi password
+Route::post('/gallery/session/{session_id}/verify', [PublicGalleryController::class, 'verify'])->name('public.gallery.verify');
+
 // Admin routes
 Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
     Route::get('/gallery', [AdminController::class, 'gallery'])->name('gallery');
     Route::get('/gallery/{id}', [AdminController::class, 'showGallery'])->name('gallery.show');
+    Route::delete('/gallery/{id}', [AdminController::class, 'destroy'])->name('gallery.destroy');
+
     // Route::get('/photos', [AdminController::class, 'photos'])->name('photos');
     // Route::get('/sessions', [AdminController::class, 'sessions'])->name('sessions');
     // Route::get('/users', [AdminController::class, 'users'])->name('users');

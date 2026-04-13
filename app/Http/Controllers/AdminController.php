@@ -8,9 +8,17 @@ use App\Models\PhotoboothSession;
 use App\Models\SinglePhoto;
 use App\Models\SupportTicket;
 use App\Models\User;
+use Endroid\QrCode\Builder\Builder;
+use Endroid\QrCode\Color\Color;
+use Endroid\QrCode\Encoding\Encoding;
+use Endroid\QrCode\Label\Font\OpenSans;
+use Endroid\QrCode\Logo\Logo;
+use Endroid\QrCode\QrCode;
+use Endroid\QrCode\Writer\PngWriter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class AdminController extends Controller
 {
@@ -35,9 +43,61 @@ class AdminController extends Controller
         return view('admin.gallery', compact('sessions'));
     }
 
+   /**
+     * Menghasilkan QR Code dalam format Base64.
+     */
+    protected function generateQrCodeBase64(string $qrContent): ?string
+    {
+        $qrCode = new QrCode(
+            data: $qrContent,
+            encoding: new Encoding('UTF-8'),
+            size: 350,
+            margin: 10
+        );
+
+        $writer = new PngWriter();
+
+        $logo = $this->getQrCodeLogo();
+
+        $result = $writer->write(
+            qrCode: $qrCode,
+            logo: $logo,
+            label: null
+        );
+
+        return sprintf(
+            'data:%s;base64,%s',
+            $result->getMimeType(),
+            base64_encode($result->getString())
+        );
+    }
+
+    /**
+     * Mendapatkan object Logo untuk QR Code.
+     */
+    protected function getQrCodeLogo(): ?Logo
+    {
+        $logoPath = public_path('assets/images/icon-logo.png');
+
+        if (file_exists($logoPath)) {
+            return new Logo(
+                path: $logoPath,
+                resizeToWidth: 75,
+                resizeToHeight: null,
+                punchoutBackground: false
+            );
+        }
+
+        return null;
+    }
+
     public function showGallery(Request $request, $id)
     {
         $session = PhotoboothSession::findOrFail($id);
+
+        $publicUrl = route('public.gallery.show', $session->session_id);
+
+        $qrCodeData = $this->generateQrCodeBase64($publicUrl);
 
         $photos = $session->photos()
             ->latest()
@@ -50,7 +110,32 @@ class AdminController extends Controller
             ]);
         }
 
-        return view('admin.gallery-show', compact('session', 'photos'));
+        // 4. Kirim qrCodeDataUri ke View
+        return view('admin.gallery-show', compact('session', 'photos', 'qrCodeData'));
+    }
+
+    public function destroy($id)
+    {
+        try {
+            $session = PhotoboothSession::findOrFail($id);
+
+            // Hapus file fisik
+            foreach ($session->photos as $photo) {
+                Storage::disk('public')->delete($photo->storage_path);
+            }
+
+            $session->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Session and photos deleted successfully!'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Something went wrong!'
+            ], 500);
+        }
     }
 
     /**

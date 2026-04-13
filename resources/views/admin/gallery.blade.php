@@ -61,6 +61,7 @@
             .input-group {
                 width: 100%;
             }
+
             .d-flex.align-items-center.gap-3 {
                 width: 100%;
                 flex-direction: column;
@@ -86,16 +87,16 @@
             <div class="d-flex align-items-center gap-2">
                 <form action="{{ route('admin.gallery') }}" method="GET" class="d-flex align-items-center">
                     <div class="input-group shadow-sm">
-                        <input type="text" name="search" class="form-control border-0"
-                            placeholder="Search customer..." value="{{ request('search') }}"
-                            style="border-radius: 10px 0 0 10px; min-width: 200px;">
+                        <input type="text" name="search" class="form-control border-0" placeholder="Search customer..."
+                               value="{{ request('search') }}" style="border-radius: 10px 0 0 10px; min-width: 200px;">
                         <button class="btn btn-primary" type="submit" style="border-radius: 0 10px 10px 0;">
                             <i class="bi bi-search"></i>
                         </button>
                     </div>
 
-                    @if(request('search'))
-                        <a href="{{ route('admin.gallery') }}" class="btn btn-outline-light ms-2" style="border-radius: 10px;">
+                    @if (request('search'))
+                        <a href="{{ route('admin.gallery') }}" class="btn btn-outline-light ms-2"
+                           style="border-radius: 10px;">
                             <i class="bi bi-x-circle"></i>
                         </a>
                     @endif
@@ -155,12 +156,23 @@
                                 <div class="text-primary fw-bold">
                                     <i class="bi bi-camera"></i> {{ $session->photo_count }} Photos
                                 </div>
-                                @if ($session->qr_code_url)
-                                    <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal"
-                                            data-bs-target="#qrModal{{ $session->id }}">
-                                        <i class="bi bi-qr-code"></i>
-                                    </button>
-                                @endif
+                                <div class="d-flex gap-1">
+                                    @if ($session->qr_code_url)
+                                        <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal"
+                                                data-bs-target="#qrModal{{ $session->id }}">
+                                            <i class="bi bi-qr-code"></i>
+                                        </button>
+                                    @endif
+
+                                    <form action="{{ route('admin.gallery.destroy', $session->id) }}" method="POST"
+                                          class="delete-session-form" data-id="{{ $session->id }}">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                </div>
                             </div>
                         </div>
 
@@ -200,4 +212,86 @@
             </div>
         </div>
     </div>
+@endsection
+
+@section('scripts')
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const deleteForms = document.querySelectorAll('.delete-session-form');
+
+            deleteForms.forEach(form => {
+                form.addEventListener('submit', function(e) {
+                    e.preventDefault();
+
+                    const formElement = this;
+                    const url = formElement.getAttribute('action');
+                    const sessionId = formElement.getAttribute('data-id');
+                    // Cari elemen card terdekat untuk dihapus nanti
+                    const cardElement = formElement.closest('.col-md-4');
+
+                    Swal.fire({
+                        title: 'Are you sure?',
+                        text: "All photos in this session will be gone forever!",
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonColor: '#d33',
+                        cancelButtonColor: '#6e7d88',
+                        confirmButtonText: 'Yes, delete it!',
+                        reverseButtons: true
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            // Tampilkan loading saat proses hapus
+                            Swal.showLoading();
+
+                            fetch(url, {
+                                    method: 'POST',
+                                    headers: {
+                                        'X-CSRF-TOKEN': formElement.querySelector(
+                                            'input[name="_token"]').value,
+                                        'Content-Type': 'application/json',
+                                        'Accept': 'application/json'
+                                    },
+                                    body: JSON.stringify({
+                                        _method: 'DELETE'
+                                    })
+                                })
+                                .then(response => response.json())
+                                .then(data => {
+                                    if (data.success) {
+                                        Swal.fire({
+                                            icon: 'success',
+                                            title: 'Deleted!',
+                                            text: data.message,
+                                            timer: 1500,
+                                            showConfirmButton: false
+                                        });
+
+                                        // Hapus card dari UI dengan efek fade out
+                                        cardElement.style.transition = 'all 0.5s ease';
+                                        cardElement.style.opacity = '0';
+                                        cardElement.style.transform = 'scale(0.9)';
+
+                                        setTimeout(() => {
+                                            cardElement.remove();
+                                            // Opsional: Cek jika sudah tidak ada card, tampilkan pesan "Empty"
+                                            if (document.querySelectorAll(
+                                                    '.photo-item').length ===
+                                                0) {
+                                                location.reload();
+                                            }
+                                        }, 500);
+                                    } else {
+                                        Swal.fire('Error!', data.message, 'error');
+                                    }
+                                })
+                                .catch(error => {
+                                    Swal.fire('Error!', 'Network error or server down.',
+                                        'error');
+                                });
+                        }
+                    });
+                });
+            });
+        });
+    </script>
 @endsection

@@ -454,53 +454,6 @@
 </head>
 
 <body>
-    <!-- Navigation -->
-    @auth
-        @if (Request::is('admin/*'))
-            <nav class="navbar navbar-expand-lg navbar-light animate__animated animate__fadeInDown">
-                <div class="container">
-                    <a class="navbar-brand" href="{{ route('admin.dashboard') }}">
-                        <div class="text-center"> <img src="{{ asset('assets/images/logo-dark.png') }}" alt="Logo"
-                                 style="max-height: 100px; width: auto; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3));">
-                        </div>
-                    </a>
-                    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                        <span class="navbar-toggler-icon"></span>
-                    </button>
-                    <div class="collapse navbar-collapse" id="navbarNav">
-                        <ul class="navbar-nav ms-auto">
-                            @if (auth()->user()->isSuperAdmin())
-                                <li class="nav-item">
-                                    <a class="nav-link {{ Request::is('admin/dashboard') ? 'active' : '' }}"
-                                       href="{{ route('admin.dashboard') }}">
-                                        <i class="bi bi-speedometer2"></i> Dashboard
-                                    </a>
-                                </li>
-                                <li class="nav-item">
-                                    <a class="nav-link {{ Request::is('admin/gallery/*') ? 'active' : '' }}"
-                                       href="{{ route('admin.gallery') }}">
-                                        <i class="bi bi-images"></i> Gallery
-                                    </a>
-                                </li>
-                            @endif
-                            {{-- <li class="nav-item">
-                                <a class="nav-link {{ Request::is('camera') ? 'active' : '' }}" href="{{ route('camera') }}">
-                                    <i class="bi bi-camera"></i> Camera
-                                </a>
-                            </li> --}}
-
-                            <li class="nav-item">
-                                <a class="nav-link" href="#" onclick="event.preventDefault(); logout();">
-                                    <i class="bi bi-box-arrow-right"></i> Logout
-                                </a>
-                            </li>
-                        </ul>
-                    </div>
-                </div>
-            </nav>
-        @endif
-    @endauth
-
     <!-- Content -->
     <div class="content-wrapper">
         @yield('content')

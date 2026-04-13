@@ -33,11 +33,12 @@
             background: #000;
         }
 
+        /* Container Overlay (Posisi Indikator) */
         .video-overlay {
             position: absolute;
-            top: 20px;
-            left: 20px;
-            right: 20px;
+            top: 15px; /* Sedikit lebih rapat ke atas di mobile */
+            left: 15px;
+            right: 15px;
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
@@ -45,49 +46,76 @@
             z-index: 10;
         }
 
+        /* Indikator LIVE */
         .live-indicator {
-            background: rgba(239, 68, 68, 0.95);
+            background: rgba(239, 68, 68, 0.9);
             color: white;
-            padding: 0.5rem 1rem;
-            border-radius: 20px;
+            padding: 0.4rem 0.8rem; /* Padding lebih slim */
+            border-radius: 50px;
             font-weight: 700;
-            font-size: 0.9rem;
+            font-size: 0.75rem; /* Font default lebih kecil */
             display: flex;
             align-items: center;
-            gap: 0.5rem;
+            gap: 0.4rem;
             animation: pulse 2s infinite;
-            backdrop-filter: blur(10px);
+            backdrop-filter: blur(8px);
+            letter-spacing: 0.5px;
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
         }
 
         .live-dot {
-            width: 10px;
-            height: 10px;
+            width: 8px;
+            height: 8px;
             background: white;
             border-radius: 50%;
             animation: blink 1s infinite;
         }
 
-        @keyframes blink {
+        /* Timer Display Responsif */
+        .timer-display {
+            background: rgba(0, 0, 0, 0.6);
+            color: white;
+            padding: 0.5rem 1.2rem;
+            border-radius: 15px;
+            font-size: 1.4rem; /* Lebih kecil agar tidak menutupi layar */
+            font-weight: 800;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
 
-            0%,
-            50% {
-                opacity: 1;
+        /* --- Responsive Breakpoints --- */
+
+        /* Tablet (iPad) */
+        @media (min-width: 768px) {
+            .live-indicator {
+                padding: 0.6rem 1.2rem;
+                font-size: 0.9rem;
             }
-
-            51%,
-            100% {
-                opacity: 0.3;
+            .live-dot {
+                width: 10px;
+                height: 10px;
+            }
+            .timer-display {
+                font-size: 2rem;
+                padding: 0.75rem 1.5rem;
+            }
+            .video-overlay {
+                top: 25px;
+                left: 25px;
+                right: 25px;
             }
         }
 
-        .timer-display {
-            background: rgba(0, 0, 0, 0.7);
-            color: white;
-            padding: 0.75rem 1.5rem;
-            border-radius: 20px;
-            font-size: 1.8rem;
-            font-weight: 700;
-            backdrop-filter: blur(10px);
+        /* Mobile sangat kecil (iPhone SE / Fold) */
+        @media (max-width: 380px) {
+            .live-indicator {
+                padding: 0.3rem 0.6rem;
+                font-size: 0.65rem;
+            }
+            .timer-display {
+                font-size: 1.2rem;
+                padding: 0.4rem 1rem;
+            }
         }
 
         #canvas {
@@ -280,6 +308,53 @@
             transform: scale(1.1);
             background: rgba(102, 126, 234, 1);
         }
+
+        /* Container Tombol */
+        .action-buttons-container {
+            display: flex;
+            flex-direction: column; /* Default: Tumpuk ke bawah (Mobile) */
+            gap: 10px;
+            width: 100%;
+            margin-top: 1.5rem;
+        }
+
+        /* Base style untuk semua tombol aksi */
+        .action-buttons-container .btn {
+            border-radius: 15px;
+            padding: 12px 20px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+            width: 100%; /* Full width di mobile */
+        }
+
+        /* Khusus Upload/Save Button dengan warna gradient agar konsisten */
+        #saveBtn {
+            background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+            border: none;
+            box-shadow: 0 4px 12px rgba(72, 187, 120, 0.3);
+        }
+
+        /* Media Query: Tablet & Desktop */
+        @media (min-width: 576px) {
+            .action-buttons-container {
+                flex-direction: row; /* Berdampingan di layar lebar */
+                justify-content: center;
+            }
+
+            .action-buttons-container .btn {
+                width: auto; /* Ukuran mengikuti konten di desktop */
+                min-width: 180px;
+            }
+        }
+
+        /* Sentuhan interaktif saat ditekan */
+        .action-buttons-container .btn:active {
+            transform: scale(0.95);
+        }
     </style>
 @endsection
 
@@ -305,18 +380,12 @@
                         <span class="live-dot"></span>
                         LIVE
                     </div>
+
                     <div class="timer-display" id="timerDisplay" style="display: none;">3</div>
                 </div>
                 <video id="videoElement" autoplay playsinline></video>
                 <canvas id="canvas"></canvas>
             </div>
-
-            <!-- Progress Indicator -->
-            {{-- <div class="progress-indicator mt-4" id="progressIndicator">
-            @for ($i = 1; $i <= $requiredPhotos; $i++)
-                <div class="progress-dot" id="dot{{ $i }}">{{ $i }}</div>
-            @endfor
-        </div> --}}
 
             <!-- Capture Button -->
             <div class="text-center mt-4">
@@ -331,15 +400,13 @@
         <div id="thumbnailContainer" class="thumbnail-container" style="display: none;"></div>
 
         <!-- Actions -->
-        <div class="text-center mt-2">
-            <button id="retakeBtn" class="btn btn-warning btn-lg me-2" style="display: none;">
+        <div class="action-buttons-container">
+            <button id="retakeBtn" class="btn btn-warning btn-lg" style="display: none;">
                 <i class="bi bi-arrow-counterclockwise"></i> Start Over
             </button>
+
             <button id="saveBtn" class="btn btn-success btn-lg" style="display: none;">
                 <i class="bi bi-upload"></i> Upload Photos
-            </button>
-            <button id="nextBtn" class="btn btn-success btn-lg" style="display: none;">
-                <i class="bi bi-magic"></i> Generate Strip
             </button>
         </div>
     </div>

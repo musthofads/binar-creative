@@ -39,6 +39,7 @@ class SessionController extends Controller
             'session_id' => $sessionId,
             'user_id' => Auth::id(),
             'customer_name' => $request->customer_name,
+            'access_password' => rand(100000, 999999),
             'package_type' => $request->package,
             'photo_count' => 0,
             'strip_generated' => false,
