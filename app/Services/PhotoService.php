@@ -131,38 +131,55 @@ class PhotoService
         try {
             $fullPath = Storage::disk('public')->path($imagePath);
 
-            // Create thumbnail using GD
-            $source = imagecreatefrompng($fullPath);
+            // --- KOREKSI UTAMA ---
+            // Gunakan imagecreatefromstring untuk deteksi format otomatis (JPG/PNG)
+            $fileContent = file_get_contents($fullPath);
+            $source = imagecreatefromstring($fileContent);
+
             if (!$source) {
+                \Illuminate\Support\Facades\Log::error('Gagal membaca gambar. Format tidak didukung: ' . $fullPath);
                 return null;
             }
 
             $width = imagesx($source);
             $height = imagesy($source);
 
-            $thumbnailWidth = 200;
-            $thumbnailHeight = (int)(($thumbnailWidth / $width) * $height);
+            // Sesuai koreksi sebelumnya: Tinggi maksimal 200px agar UI tetap proporsional
+            $thumbnailHeight = 200;
+            $thumbnailWidth = (int)(($thumbnailHeight / $height) * $width);
 
             $thumbnail = imagecreatetruecolor($thumbnailWidth, $thumbnailHeight);
-            imagecopyresampled($thumbnail, $source, 0, 0, 0, 0, $thumbnailWidth, $thumbnailHeight, $width, $height);
+
+            // Support transparansi jika sewaktu-waktu ada PNG masuk
+            imagealphablending($thumbnail, false);
+            imagesavealpha($thumbnail, true);
+
+            imagecopyresampled(
+                $thumbnail, $source,
+                0, 0, 0, 0,
+                $thumbnailWidth, $thumbnailHeight,
+                $width, $height
+            );
 
             $thumbnailFilename = 'thumb_' . basename($imagePath);
             $thumbnailPath = "photos/{$sessionId}/thumbnails/{$thumbnailFilename}";
             $thumbnailFullPath = Storage::disk('public')->path($thumbnailPath);
 
-            // Create directory if not exists
+            // Pastikan folder exists
             $dir = dirname($thumbnailFullPath);
             if (!is_dir($dir)) {
                 mkdir($dir, 0755, true);
             }
 
-            imagepng($thumbnail, $thumbnailFullPath);
+            // Simpan sebagai JPEG (lebih ringan untuk thumbnail)
+            // Gunakan imagejpeg karena source aslinya adalah JPEG
+            imagejpeg($thumbnail, $thumbnailFullPath, 85);
+
             imagedestroy($source);
             imagedestroy($thumbnail);
 
             return $thumbnailPath;
         } catch (\Exception $e) {
-            // Fixed: Use Log facade instead of backslash prefix
             \Illuminate\Support\Facades\Log::error('Thumbnail generation failed: ' . $e->getMessage());
             return null;
         }

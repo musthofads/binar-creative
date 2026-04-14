@@ -164,10 +164,16 @@
                         </div>
                     </div>
 
+                    <div class="text-center mt-3">
+                        <button onclick="sendWhatsApp()" class="btn btn-success btn-sm rounded-pill px-3">
+                            <i class="bi bi-whatsapp me-1"></i> Kirim ke WhatsApp
+                        </button>
+                    </div>
+
                 </div>
             </div>
 
-            <div class="col-lg-8">
+            <div class="col-lg-8 mt-3">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h4 class="mb-0 fw-bold text-white">
                         <i class="bi bi-camera me-2 text-white"></i>Photo Collection
@@ -211,6 +217,40 @@
 
 @section('scripts')
     <script>
+        async function sendWhatsApp() {
+            const { value: phone } = await Swal.fire({
+                title: 'Kirim ke WhatsApp',
+                input: 'text',
+                inputLabel: 'Nomor WhatsApp Tujuan',
+                inputValue: '08', // Default awal
+                showCancelButton: true,
+                inputPlaceholder: 'Contoh: 0812xxxx'
+            });
+
+            if (phone) {
+                let formattedPhone = phone.replace(/\D/g, '');
+                if (formattedPhone.startsWith('0')) {
+                    formattedPhone = '62' + formattedPhone.slice(1);
+                }
+
+                const galleryLink = "{{ route('public.gallery.show', $session->session_id) }}";
+                const accessPin = "{{ $session->access_password }}";
+                const customerName = "{{ $session->customer_name }}";
+
+                const message =
+                    `Halo, Kak *${customerName}*! %0A%0A` +
+                    `Terima kasih telah menggunakan layanan *Photobox by Binar Creative*. %0A%0A` +
+                    `Berikut adalah detail akses untuk galeri foto Anda: %0A%0A` +
+                    `*Link Galeri:* %0A${galleryLink}%0A%0A` +
+                    `*PIN Akses:* *${accessPin}* %0A%0A` +
+                    `_Silakan gunakan PIN di atas untuk mengakses galeri._ %0A%0A` +
+                    `Best Regards, %0A` +
+                    `*Binar Creative Team*`;
+
+                window.open(`https://wa.me/${formattedPhone}?text=${message}`, '_blank');
+            }
+        }
+
         function togglePin() {
             const inputs = document.querySelectorAll('.pin-box');
             const icon = document.getElementById('toggleIcon');

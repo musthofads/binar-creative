@@ -23,6 +23,8 @@ Route::get('/session/{sessionId}', [SessionController::class, 'show']);
 Route::patch('/session/{sessionId}/activity', [SessionController::class, 'updateActivity']);
 
 // Photo upload (session-based, no auth required)
+Route::post('/photos/clear-session', [PhotoUploadController::class, 'clearSession']);
+Route::post('/photos/delete', [PhotoUploadController::class, 'delete']);
 Route::post('/photos/upload', [PhotoUploadController::class, 'upload']);
 Route::get('/photos', [PhotoUploadController::class, 'getPhotosBySession']); // ?sessionId=xxx
 Route::post('/strip/save', [PhotoUploadController::class, 'saveStrip']); // Manual edited strip from canvas

@@ -57,21 +57,40 @@
         justify-content: center;
         border-radius: 12px;
     }
+
+    /* Tambahan sentuhan halus untuk interaksi */
+    .custom-table tbody tr:hover {
+        background-color: rgba(0,0,0,0.01);
+        transition: background-color 0.2s ease;
+    }
+
+    /* Menghilangkan border terakhir agar lebih clean */
+    .custom-table tr:last-child td {
+        border-bottom: 0;
+    }
+
+    /* Penyesuaian padding khusus mobile jika dibutuhkan */
+    @media (max-width: 576px) {
+        .custom-table td {
+            padding-top: 1rem;
+            padding-bottom: 1rem;
+        }
+    }
 </style>
 @endsection
 
 @section('content')
 <div class="container py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2 class="text-dark fw-bold mb-0">
-            <i class="bi bi-speedometer2 text-primary me-2"></i> Dashboard
+        <h2 class="text-white fw-bold mb-0 me-1">
+            <i class="bi bi-speedometer2 text-white me-1"></i> Dashboard
         </h2>
         <a href="{{ route('admin.gallery') }}" class="btn btn-primary px-4 shadow-sm" style="border-radius: 10px;">
             <i class="bi bi-images me-1"></i> Open Gallery
         </a>
     </div>
 
-    <h6 class="text-muted mb-3 fw-bold text-uppercase small">Package Performance</h6>
+    <h6 class="text-white mb-3 fw-bold text-uppercase small">Package Performance</h6>
     <div class="row g-3 mb-5">
         @php
             $packages = [
@@ -100,50 +119,53 @@
 
     <div class="row">
         <div class="col-12">
-            <h6 class="text-muted mb-3 fw-bold text-uppercase small">Recent Daily Activity</h6>
+            <h6 class="text-white mb-3 fw-bold text-uppercase small">Recent Daily Activity</h6>
             <div class="table-container">
                 <div class="table-responsive">
-                    <table class="table custom-table align-middle mb-0">
-                        <thead>
-                            <tr>
-                                <th style="width: 45%;">Date</th>
-                                <th class="text-center">Usage</th>
-                                <th class="text-end">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @forelse($daily_stats as $day)
-                            <tr>
-                                <td>
-                                    <div class="d-flex align-items-center">
-                                        <div class="bg-light text-primary p-2 rounded-circle me-3" style="width: 35px; height: 35px; display: flex; align-items: center; justify-content: center;">
-                                            <i class="bi bi-calendar3 small"></i>
-                                        </div>
-                                        <span class="fw-semibold text-dark">{{ \Carbon\Carbon::parse($day->date)->format('l, d M Y') }}</span>
-                                    </div>
-                                </td>
-                                <td class="text-center">
-                                    <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-2 rounded-pill fw-bold">
-                                        {{ $day->count }} Sessions
-                                    </span>
-                                </td>
-                                <td class="text-end">
-                                    <a href="{{ route('admin.gallery', ['search' => $day->date]) }}" class="btn btn-sm btn-outline-primary px-3 fw-bold" style="border-radius: 6px;">
-                                        Details <i class="bi bi-chevron-right ms-1"></i>
-                                    </a>
-                                </td>
-                            </tr>
-                            @empty
-                            <tr>
-                                <td colspan="3" class="text-center py-5">
-                                    <i class="bi bi-calendar-x display-4 text-light d-block mb-3"></i>
-                                    <span class="text-muted">No sessions recorded in the last 7 days.</span>
-                                </td>
-                            </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                </div>
+    <table class="table custom-table align-middle mb-0" style="min-width: 600px;">
+        <thead>
+            <tr>
+                <th style="width: 45%;">Date</th>
+                <th class="text-center">Usage</th>
+                <th class="text-end">Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            @forelse($daily_stats as $day)
+            <tr>
+                <td>
+                    <div class="d-flex align-items-center">
+                        <div class="bg-light text-primary p-2 rounded-circle me-2 me-md-3 flex-shrink-0" style="width: 35px; height: 35px; display: flex; align-items: center; justify-content: center;">
+                            <i class="bi bi-calendar3 small"></i>
+                        </div>
+                        <span class="fw-semibold text-dark text-nowrap" style="font-size: clamp(0.85rem, 2vw, 1rem);">
+                            {{ \Carbon\Carbon::parse($day->date)->format('l, d M Y') }}
+                        </span>
+                    </div>
+                </td>
+                <td class="text-center">
+                    <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-2 rounded-pill fw-bold">
+                        {{ $day->count }} <span class="d-none d-sm-inline">Sessions</span>
+                    </span>
+                </td>
+                <td class="text-end">
+                    <a href="{{ route('admin.gallery', ['search' => $day->date]) }}" class="btn btn-sm btn-outline-primary px-3 fw-bold text-nowrap" style="border-radius: 6px;">
+                        <span class="d-none d-md-inline">Details</span>
+                        <i class="bi bi-chevron-right ms-1"></i>
+                    </a>
+                </td>
+            </tr>
+            @empty
+            <tr>
+                <td colspan="3" class="text-center py-5">
+                    <i class="bi bi-calendar-x display-4 text-light d-block mb-3"></i>
+                    <span class="text-muted">No sessions recorded in the last 7 days.</span>
+                </td>
+            </tr>
+            @endforelse
+        </tbody>
+    </table>
+</div>
             </div>
         </div>
     </div>

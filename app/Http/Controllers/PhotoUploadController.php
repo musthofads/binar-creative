@@ -48,7 +48,7 @@ class PhotoUploadController extends Controller
         $validator = Validator::make($request->all(), [
             'session_id' => 'required|string|exists:photobooth_sessions,session_id',
             'images'     => 'required|array',
-            'images.*'   => 'required|string',
+            'images.*'   => 'required|string', // Base64 string
             'metadata'   => 'nullable|array',
         ]);
 
@@ -61,15 +61,21 @@ class PhotoUploadController extends Controller
         }
 
         try {
-            $savedPhotos = [];
             $session = PhotoboothSession::where('session_id', $request->session_id)->first();
 
-            // Gunakan Database Transaction agar jika satu foto gagal, semua dibatalkan (opsional tapi disarankan)
-            DB::beginTransaction();
+            // Pastikan session masih aktif/processing
+            if ($session->status === 'completed') {
+                return response()->json(['success' => false, 'message' => 'Session already finished'], 403);
+            }
 
-            foreach ($request->images as $index => $base64Image) {
+            $savedPhotos = [];
+
+            foreach ($request->images as $base64Image) {
+                // Hitung nomor foto secara dinamis berdasarkan jumlah di DB + 1
+                $currentCount = $session->photo_count;
+
                 $meta = $request->metadata ?? [];
-                $meta['photo_number'] = $index + 1;
+                $meta['photo_number'] = $currentCount + 1;
 
                 $photo = $this->photoService->savePhoto(
                     $base64Image,
@@ -78,9 +84,9 @@ class PhotoUploadController extends Controller
                     $meta
                 );
 
-                if ($session) {
-                    $session->increment('photo_count');
-                }
+                // Increment count di session
+                $session->increment('photo_count');
+                $session->update(['last_activity' => now()]);
 
                 $savedPhotos[] = [
                     'id'  => $photo->id,
@@ -88,32 +94,108 @@ class PhotoUploadController extends Controller
                 ];
             }
 
-            if ($session) {
-                // Sesuai permintaan: Reset/Selesaikan session di database
-                $session->update([
-                    'status'        => 'completed', // Tandai session sudah selesai
-                    'last_activity' => now()
-                ]);
-
-                session()->forget('photo_session_id');
-            }
-
-            DB::commit();
-
             return response()->json([
                 'success' => true,
                 'photos'  => $savedPhotos,
-                'message' => count($savedPhotos) . ' Photos uploaded and session completed',
+                'message' => 'Photo saved successfully',
             ], 201);
 
         } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Photo upload failed: ' . $e->getMessage());
-
+            Log::error('Photo auto-save failed: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to upload photos: ' . $e->getMessage(),
+                'message' => 'Server error: ' . $e->getMessage(),
             ], 500);
+        }
+    }
+
+    public function delete(Request $request)
+    {
+        $request->validate([
+            'session_id' => 'required|string|exists:photobooth_sessions,session_id',
+            'index'      => 'required|integer'
+        ]);
+
+        try {
+            $session = PhotoboothSession::where('session_id', $request->session_id)->first();
+            $targetNumber = $request->index + 1;
+
+            $photo = SinglePhoto::where('session_id', $request->session_id)
+                                ->where('queue_number', $targetNumber)
+                                ->first();
+
+           if ($photo) {
+                // 1. Hapus file fisik menggunakan nama kolom yang benar: 'storage_path'
+                if (!empty($photo->storage_path)) {
+                    Storage::disk('public')->delete($photo->storage_path);
+                }
+
+                // 2. Hapus thumbnail jika kolomnya ada
+                if (!empty($photo->thumbnail_path)) {
+                    Storage::disk('public')->delete($photo->thumbnail_path);
+                }
+
+                // 3. Hapus record dari database
+                $photo->delete();
+
+                // 4. Update count di session
+                $session->decrement('photo_count');
+
+                // 5. Re-order queue_number agar tetap urut
+                $remainingPhotos = $session->photos()->orderBy('queue_number')->get();
+                foreach ($remainingPhotos as $idx => $p) {
+                    $p->update(['queue_number' => $idx + 1]);
+                }
+
+                return response()->json(['success' => true, 'message' => 'Photo deleted successfully']);
+            }
+
+            return response()->json(['success' => false, 'message' => 'Photo not found'], 404);
+
+        } catch (\Exception $e) {
+            Log::error('Delete photo failed: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Server error: ' . $e->getMessage()], 500);
+        }
+    }
+
+    public function clearSession(Request $request)
+    {
+        $request->validate([
+            'session_id' => 'required|string|exists:photobooth_sessions,session_id',
+        ]);
+
+        try {
+            $session = PhotoboothSession::where('session_id', $request->session_id)->first();
+
+            // 1. Ambil semua foto dalam session ini (Model SinglePhoto)
+            $photos = SinglePhoto::where('session_id', $request->session_id)->get();
+
+            foreach ($photos as $photo) {
+                // Hapus file original & thumbnail di storage
+                if (!empty($photo->storage_path)) {
+                    Storage::disk('public')->delete($photo->storage_path);
+                }
+                if (!empty($photo->thumbnail_path)) {
+                    Storage::disk('public')->delete($photo->thumbnail_path);
+                }
+                // Hapus record di tabel single_photos
+                $photo->delete();
+            }
+
+            // 2. Reset counter photo_count kembali ke 0
+            $session->update([
+                'photo_count' => 0,
+                'last_activity' => now()
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Gallery reset for current session'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Retake all failed: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Failed to clear gallery'], 500);
         }
     }
 

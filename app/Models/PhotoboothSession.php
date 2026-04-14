@@ -14,7 +14,6 @@ class PhotoboothSession extends Model
     protected $fillable = [
         'session_id',
         'customer_name',
-        'access_password',
         'package_type',
         'qr_code_path',
         'qr_code_url',

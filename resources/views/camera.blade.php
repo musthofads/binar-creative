@@ -36,7 +36,8 @@
         /* Container Overlay (Posisi Indikator) */
         .video-overlay {
             position: absolute;
-            top: 15px; /* Sedikit lebih rapat ke atas di mobile */
+            top: 15px;
+            /* Sedikit lebih rapat ke atas di mobile */
             left: 15px;
             right: 15px;
             display: flex;
@@ -50,10 +51,12 @@
         .live-indicator {
             background: rgba(239, 68, 68, 0.9);
             color: white;
-            padding: 0.4rem 0.8rem; /* Padding lebih slim */
+            padding: 0.4rem 0.8rem;
+            /* Padding lebih slim */
             border-radius: 50px;
             font-weight: 700;
-            font-size: 0.75rem; /* Font default lebih kecil */
+            font-size: 0.75rem;
+            /* Font default lebih kecil */
             display: flex;
             align-items: center;
             gap: 0.4rem;
@@ -77,7 +80,8 @@
             color: white;
             padding: 0.5rem 1.2rem;
             border-radius: 15px;
-            font-size: 1.4rem; /* Lebih kecil agar tidak menutupi layar */
+            font-size: 1.4rem;
+            /* Lebih kecil agar tidak menutupi layar */
             font-weight: 800;
             backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.2);
@@ -91,14 +95,17 @@
                 padding: 0.6rem 1.2rem;
                 font-size: 0.9rem;
             }
+
             .live-dot {
                 width: 10px;
                 height: 10px;
             }
+
             .timer-display {
                 font-size: 2rem;
                 padding: 0.75rem 1.5rem;
             }
+
             .video-overlay {
                 top: 25px;
                 left: 25px;
@@ -112,6 +119,7 @@
                 padding: 0.3rem 0.6rem;
                 font-size: 0.65rem;
             }
+
             .timer-display {
                 font-size: 1.2rem;
                 padding: 0.4rem 1rem;
@@ -200,15 +208,14 @@
             justify-content: center;
             font-size: 0.9rem;
             z-index: 2;
-            opacity: 0;
             transition: opacity 0.3s ease;
             border: none;
             cursor: pointer;
         }
 
-        .thumbnail-card:hover .thumbnail-delete {
-            opacity: 1;
-        }
+        /* .thumbnail-card:hover .thumbnail-delete {
+                    opacity: 1;
+                } */
 
         .capture-zone {
             background: white;
@@ -312,7 +319,8 @@
         /* Container Tombol */
         .action-buttons-container {
             display: flex;
-            flex-direction: column; /* Default: Tumpuk ke bawah (Mobile) */
+            flex-direction: column;
+            /* Default: Tumpuk ke bawah (Mobile) */
             gap: 10px;
             width: 100%;
             margin-top: 1.5rem;
@@ -328,7 +336,8 @@
             justify-content: center;
             gap: 8px;
             transition: all 0.3s ease;
-            width: 100%; /* Full width di mobile */
+            width: 100%;
+            /* Full width di mobile */
         }
 
         /* Khusus Upload/Save Button dengan warna gradient agar konsisten */
@@ -341,12 +350,14 @@
         /* Media Query: Tablet & Desktop */
         @media (min-width: 576px) {
             .action-buttons-container {
-                flex-direction: row; /* Berdampingan di layar lebar */
+                flex-direction: row;
+                /* Berdampingan di layar lebar */
                 justify-content: center;
             }
 
             .action-buttons-container .btn {
-                width: auto; /* Ukuran mengikuti konten di desktop */
+                width: auto;
+                /* Ukuran mengikuti konten di desktop */
                 min-width: 180px;
             }
         }
@@ -475,18 +486,15 @@
 
         // Capture photo
         async function capturePhoto() {
-            // Flash effect
+            // 1. Efek Flash
             flashOverlay.classList.add('active');
             setTimeout(() => flashOverlay.classList.remove('active'), 100);
 
+            // 2. Setup Canvas (Crop 3:2)
             const targetRatio = 3 / 2;
-
-            // Tentukan dimensi canvas berdasarkan video input
-            // Kita ambil tinggi penuh video, lalu lebarnya disesuaikan ke 3:4
             let canvasHeight = video.videoHeight;
             let canvasWidth = video.videoHeight * targetRatio;
 
-            // Jika lebar yang dihitung melebihi lebar video asli, balik logikanya
             if (canvasWidth > video.videoWidth) {
                 canvasWidth = video.videoWidth;
                 canvasHeight = video.videoWidth / targetRatio;
@@ -495,39 +503,53 @@
             canvas.width = canvasWidth;
             canvas.height = canvasHeight;
 
-            // Hitung posisi tengah (offset) agar hasil foto presisi di tengah
             const sx = (video.videoWidth - canvasWidth) / 2;
             const sy = (video.videoHeight - canvasHeight) / 2;
 
             ctx.save();
-
-            // Mirroring
             ctx.scale(-1, 1);
             ctx.translate(-canvas.width, 0);
-
-            // drawImage(image, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight)
-            ctx.drawImage(
-                video,
-                sx, sy, canvasWidth, canvasHeight, // Area sumber (crop tengah)
-                0, 0, canvas.width, canvas.height // Area tujuan
-            );
-
+            ctx.drawImage(video, sx, sy, canvasWidth, canvasHeight, 0, 0, canvas.width, canvas.height);
             ctx.restore();
 
             const imageData = canvas.toDataURL('image/jpeg', 0.9);
-            photos.push(imageData);
-            photoCount++;
 
-            updateUI();
-            captureBtn.disabled = false;
+            // 3. Auto-Save ke Database
+            try {
+                captureBtn.disabled = true;
+                const currentSessionId = window.sessionId || localStorage.getItem('photo_session_id');
+
+                const response = await axios.post('/api/photos/upload', {
+                    session_id: currentSessionId,
+                    images: [imageData] // Kirim satu foto
+                });
+
+                if (response.data.success) {
+                    // PUSH KE ARRAY LOKAL AGAR MUNCUL DI UI
+                    photos.push(imageData);
+                    photoCount++;
+
+                    // Panggil Update UI agar thumbnail muncul
+                    updateUI();
+
+                    const Toast = Swal.mixin({
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false,
+                        timer: 1500
+                    });
+                    Toast.fire({
+                        icon: 'success',
+                        title: 'Photo saved successfully!'
+                    });
+                }
+            } catch (error) {
+                console.error('Save error:', error);
+                Swal.fire('Error', 'Gagal menyimpan foto ke server.', 'error');
+            } finally {
+                captureBtn.disabled = (photoCount >= requiredPhotos);
+            }
         }
-
-        // Delete photo
-        window.deletePhoto = (index) => {
-            photos.splice(index, 1);
-            photoCount--;
-            updateUI();
-        };
 
         function previewImage(src) {
             const modalImg = document.getElementById('modalPreviewImage');
@@ -549,7 +571,7 @@
 
         // Update UI
         function updateUI() {
-            // 1. Update progress dots
+            // 1. Update Progress Dots
             for (let i = 1; i <= requiredPhotos; i++) {
                 const dot = document.getElementById(`dot${i}`);
                 if (dot) {
@@ -566,97 +588,151 @@
                 }
             }
 
-            // 2. Update Thumbnails & Save/Retake Buttons
+            // 2. Render Thumbnails dengan Tombol Preview & Delete
             if (photoCount > 0) {
                 thumbnailContainer.style.display = 'flex';
                 thumbnailContainer.innerHTML = photos.map((photo, index) => `
-                <div class="thumbnail-card animate__animated animate__zoomIn">
-                    <img src="${photo}" alt="Photo ${index + 1}">
+                    <div class="thumbnail-card animate__animated animate__zoomIn">
+                        <img src="${photo}" alt="Photo ${index + 1}">
+                        <div class="thumbnail-number">${index + 1}</div>
 
-                    <div class="thumbnail-number">${index + 1}</div>
+                        <button class="thumbnail-preview btn-preview-action" onclick="previewImage('${photo}')">
+                            <i class="bi bi-eye-fill"></i>
+                        </button>
 
-                    <button class="thumbnail-preview btn-preview-action" data-index="${index}">
-                        <i class="bi bi-eye-fill"></i>
-                    </button>
-
-                    <button class="thumbnail-delete" onclick="deletePhoto(${index})">
-                        <i class="bi bi-trash-fill"></i>
-                    </button>
-                </div>
-            `).join('');
-
-                document.querySelectorAll('.btn-preview-action').forEach(btn => {
-                    btn.addEventListener('click', function() {
-                        const idx = this.getAttribute('data-index');
-                        previewImage(photos[idx]); // Ambil langsung dari array photos
-                    });
-                });
+                        <button class="thumbnail-delete" onclick="deletePhoto(${index})">
+                            <i class="bi bi-trash-fill"></i>
+                        </button>
+                    </div>
+                `).join('');
 
                 retakeBtn.style.display = 'inline-block';
-                saveBtn.style.display = 'inline-block'; // Tampilkan save jika ada foto
+
+                // Munculkan tombol Finish jika sudah mencapai kuota
+                // if (photoCount >= requiredPhotos) {
+                saveBtn.style.display = 'inline-block';
+                saveBtn.innerHTML = '<i class="bi bi-check-all"></i> Finish & Preview';
+                // }
             } else {
                 thumbnailContainer.style.display = 'none';
                 retakeBtn.style.display = 'none';
                 saveBtn.style.display = 'none';
             }
 
-            // 3. Update Capture Button State (Logic Final)
+            // 3. Update Status Tombol Capture
             if (photoCount >= requiredPhotos) {
                 captureBtn.disabled = true;
                 captureText.textContent = 'All Photos Captured!';
-                saveBtn.className = "btn btn-success btn-lg px-5";
             } else {
                 captureBtn.disabled = false;
-                captureText.textContent = `Take Photo`;
-                // captureText.textContent = `Take Photo ${photoCount + 1}/${requiredPhotos}`;
-                saveBtn.className = "btn btn-success btn-lg px-5"; // Reset class jika belum penuh
+                captureText.textContent = 'Take Photo';
             }
         }
 
+        window.deletePhoto = async (index) => {
+            const result = await Swal.fire({
+                title: 'Delete this photo?',
+                text: "You'll need to retake this shot.",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#ef4444',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Yes, delete it!',
+                reverseButtons: true
+            });
+
+            if (result.isConfirmed) {
+                try {
+                    // 1. Tampilkan loading agar user tidak klik berkali-kali
+                    Swal.fire({
+                        title: 'Deleting...',
+                        allowOutsideClick: false,
+                        didOpen: () => {
+                            Swal.showLoading();
+                        }
+                    });
+
+                    const currentSessionId = window.sessionId || localStorage.getItem('photo_session_id');
+
+                    // 2. Kirim request ke Backend
+                    const response = await axios.post('/api/photos/delete', {
+                        session_id: currentSessionId,
+                        index: index // Mengirim index 0, 1, 2...
+                    });
+
+                    if (response.data.success) {
+                        // 3. Update State Lokal hanya jika backend sukses
+                        photos.splice(index, 1);
+                        photoCount--;
+
+                        // 4. Render ulang UI
+                        updateUI();
+
+                        Swal.fire({
+                            toast: true,
+                            position: 'top-end',
+                            icon: 'success',
+                            title: 'Photo deleted',
+                            showConfirmButton: false,
+                            timer: 1500
+                        });
+                    }
+                } catch (error) {
+                    console.error('Delete error:', error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Failed!',
+                        text: error.response?.data?.message || 'Could not delete photo from server.'
+                    });
+                }
+            }
+        };
+
         // Retake all
         retakeBtn.addEventListener('click', () => {
-            // Check if there are no photos to clear
-            if (photos.length === 0) {
-                Swal.fire({
-                    title: 'Empty Gallery',
-                    text: 'You haven\'t captured any photos yet.',
-                    icon: 'info',
-                    confirmButtonColor: '#3085d6',
-                });
-                return;
-            }
+            if (photos.length === 0) return; // Tidak ada foto, tidak perlu reset
 
             Swal.fire({
                 title: 'Retake All Photos?',
-                text: "This will permanently delete your current progress!",
+                text: "This will delete all current photos but stay in the same session.",
                 icon: 'warning',
                 showCancelButton: true,
-                confirmButtonColor: '#d33', // Red for destructive action
-                cancelButtonColor: '#6c757d', // Grey for cancel
-                confirmButtonText: 'Yes, start over',
-                cancelButtonText: 'No, keep them',
-                reverseButtons: true
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Yes, Retake All',
+                reverseButtons: true,
+                showLoaderOnConfirm: true,
+                preConfirm: async () => {
+                    try {
+                        const currentSessionId = window.sessionId || localStorage.getItem(
+                            'photo_session_id');
+                        const response = await axios.post('/api/photos/clear-session', {
+                            session_id: currentSessionId
+                        });
+                        return response.data;
+                    } catch (error) {
+                        Swal.showValidationMessage(
+                            `Error: ${error.response?.data?.message || 'Server error'}`);
+                    }
+                },
+                allowOutsideClick: () => !Swal.isLoading()
             }).then((result) => {
                 if (result.isConfirmed) {
-                    // Reset data
+                    // 1. Reset variabel lokal di JavaScript
                     photoCount = 0;
                     photos = [];
 
-                    // Update UI
+                    // 2. Refresh UI (Dots kembali ke angka, thumbnail hilang, tombol capture aktif lagi)
                     updateUI();
 
-                    // Toast notification for non-intrusive feedback
-                    const Toast = Swal.mixin({
+                    // 3. Notifikasi sukses
+                    Swal.fire({
                         toast: true,
                         position: 'top-end',
-                        showConfirmButton: false,
-                        timer: 2500,
-                        timerProgressBar: true
-                    });
-
-                    Toast.fire({
                         icon: 'success',
-                        title: 'Gallery cleared successfully'
+                        title: 'Ready to retake!',
+                        showConfirmButton: false,
+                        timer: 1500
                     });
                 }
             });
@@ -707,75 +783,45 @@
         //         saveBtn.innerHTML = '<i class="bi bi-magic"></i> Upload Photos';
         //     }
         // });
-        saveBtn.addEventListener('click', async () => {
-            if (photos.length === 0) {
-                Swal.fire({
-                    title: 'No Photos Yet',
-                    text: 'Capture some memories before uploading!',
-                    icon: 'warning',
-                    confirmButtonColor: '#667eea', // Brown theme
-                });
-                return;
-            }
-
-            const confirm = await Swal.fire({
-                title: 'Ready to Save?',
-                text: `You are about to save ${photos.length} beautiful photos.`,
-                icon: 'question',
+        saveBtn.addEventListener('click', () => {
+            Swal.fire({
+                title: 'Finish Session?',
+                text: "This will complete your session and reset the booth for the next user.",
+                icon: 'success',
                 showCancelButton: true,
-                confirmButtonColor: '#764ba2', // Dark brown
+                confirmButtonColor: '#198754',
                 cancelButtonColor: '#6c757d',
-                confirmButtonText: 'Yes, Save Them!',
-                cancelButtonText: 'Not yet',
+                confirmButtonText: 'Yes, I\'m Done!',
+                cancelButtonText: 'Go Back',
                 reverseButtons: true
-            });
-
-            if (!confirm.isConfirmed) return;
-
-            try {
-                saveBtn.disabled = true;
-                saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Processing...';
-
-                // Pastikan sessionId diambil dari sumber yang benar (misal variabel global atau session storage)
-                const currentSessionId = window.sessionId || localStorage.getItem('photo_session_id');
-
-                const response = await axios.post('/api/photos/upload', {
-                    session_id: currentSessionId, // Ini yang dicek Laravel (exists:photobooth_sessions)
-                    images: photos,
-                });
-
-                if (response.data.success) {
-                    await Swal.fire({
-                        title: 'All Set!',
-                        text: 'Your photos have been saved successfully.',
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // 1. Tampilkan pesan terima kasih sebentar
+                    Swal.fire({
+                        title: 'Thank You!',
+                        text: 'Your session has ended.',
                         icon: 'success',
-                        confirmButtonColor: '#764ba2',
+                        timer: 2000,
+                        showConfirmButton: false,
+                        allowOutsideClick: false
                     });
-                    // Reset halaman
-                    window.location.reload();
-                }
-            } catch (error) {
-                console.error('Error saving photos:', error);
 
-                // Cek jika error 422 untuk memberikan pesan spesifik
-                let errorMessage = 'Something went wrong. Let’s give it another shot!';
-                if (error.response && error.response.status === 422) {
-                    errorMessage = 'System busy or session expired. Please try again.';
-                    console.log('Validation details:', error.response.data.errors);
-                }
+                    // 2. Hapus Session ID dari LocalStorage agar sistem reset
+                    localStorage.removeItem('photo_session_id');
 
-                Swal.fire({
-                    title: 'Wait a moment...',
-                    text: errorMessage,
-                    icon: 'error',
-                    confirmButtonText: 'Try Again',
-                    confirmButtonColor: '#764ba2',
-                });
-            } finally {
-                saveBtn.disabled = false;
-                saveBtn.innerHTML = '<i class="bi bi-upload"></i> Upload Photos';
-            }
+                    // 3. Reset variabel lokal (opsional jika langsung redirect)
+                    photos = [];
+                    photoCount = 0;
+
+                    // 4. Redirect ke halaman awal (landing page/start screen)
+                    // Ganti '/' dengan route awal aplikasi Anda
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 2000);
+                }
+            });
         });
+
         // Next button (Go to editor to customize)
         // nextBtn.addEventListener('click', async () => {
         //     // User can choose to:
@@ -870,7 +916,7 @@
 
                     // Sembunyikan modal dan jalankan kamera
                     const sessionModalObj = bootstrap.Modal.getInstance(document.getElementById(
-                    'sessionModal'));
+                        'sessionModal'));
                     if (sessionModalObj) sessionModalObj.hide();
 
                     startCamera();
